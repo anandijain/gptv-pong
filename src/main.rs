@@ -12,10 +12,10 @@ const RACKET_HEIGHT: f32 = 100.0;
 const RACKET_WIDTH: f32 = 20.0;
 const RACKET_WIDTH_HALF: f32 = RACKET_WIDTH * 0.5;
 const RACKET_HEIGHT_HALF: f32 = RACKET_HEIGHT * 0.5;
-const BALL_SIZE: f32 = 30.0;
+const BALL_SIZE: f32 = 10.0;
 const BALL_SIZE_HALF: f32 = BALL_SIZE * 0.5;
 const PLAYER_SPEED: f32 = 600.0;
-const BALL_SPEED: f32 = 500.0;
+const BALL_SPEED: f32 = 100.0;
 
 fn clamp(value: &mut f32, low: f32, high: f32) {
     if *value < low {
@@ -76,6 +76,45 @@ impl MainState {
             player_2_score: 0,
         }
     }
+}
+
+// Define a function to draw an arrow
+fn draw_velocity_arrow(ctx: &mut Context, ball_pos: na::Point2<f32>, ball_vel: na::Vector2<f32>) -> GameResult {
+    let arrow_length = ball_vel.magnitude() / BALL_SPEED; // Normalize arrow length
+    let arrow_end = ball_pos + ball_vel.normalize() * arrow_length * 20.0; // Scale for visibility
+
+    let line = graphics::Mesh::new_line(
+        ctx,
+        &[ball_pos, arrow_end],
+        2.0,
+        graphics::Color::from_rgb(255, 165, 0), // Orange color for visibility
+    )?;
+
+    graphics::draw(ctx, &line, graphics::DrawParam::default()).unwrap();
+      // Calculate vertices for the arrowhead (triangle)
+        // Correct angle calculation for arrowhead
+    let arrow_angle = ball_vel.y.atan2(ball_vel.x) + std::f32::consts::PI;
+    let head_length = 10.0; // Length of the sides of the arrowhead
+    let vertex1 = arrow_end;
+    let vertex2 = na::Point2::new(
+        arrow_end.x + head_length * (arrow_angle + std::f32::consts::PI / 4.0).cos(),
+        arrow_end.y + head_length * (arrow_angle + std::f32::consts::PI / 4.0).sin(),
+    );
+    let vertex3 = na::Point2::new(
+        arrow_end.x + head_length * (arrow_angle - std::f32::consts::PI / 4.0).cos(),
+        arrow_end.y + head_length * (arrow_angle - std::f32::consts::PI / 4.0).sin(),
+    );
+
+    // Draw the arrowhead (triangle)
+    let triangle = graphics::Mesh::new_polygon(
+        ctx,
+        graphics::DrawMode::fill(),
+        &[vertex1, vertex2, vertex3],
+        graphics::Color::from_rgb(255, 165, 0), // Orange color for visibility
+    )?;
+    graphics::draw(ctx, &triangle, graphics::DrawParam::default())?;
+
+    Ok(())
 }
 
 impl event::EventHandler for MainState {
@@ -155,6 +194,8 @@ impl event::EventHandler for MainState {
             ball_rect,
             graphics::WHITE,
         )?;
+        // Draw the velocity arrow on top of the ball
+        draw_velocity_arrow(ctx, self.ball_pos, self.ball_vel)?;
 
         let screen_h = graphics::drawable_size(ctx).1;
         let middle_rect = graphics::Rect::new(-MIDDLE_LINE_W * 0.5, 0.0, MIDDLE_LINE_W, screen_h);
